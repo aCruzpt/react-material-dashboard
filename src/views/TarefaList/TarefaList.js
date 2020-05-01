@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/styles';
 
+import { bindActionCreators } from 'redux'
+import { connect } from 'react-redux'
+import { listar, salvar, deletar, alterarStatus } from '../../store/tarefasReducer'
+
+import { esconderMensagem } from '../../store/mensagemReducer'
+
 import { TarefasToolbar, TarefasTable } from './components';
 import {
   Button,
@@ -9,7 +15,6 @@ import {
   DialogContent,
   DialogTitle
 } from '@material-ui/core';
-import axios from 'axios';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -20,112 +25,51 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const API_URL = 'https://minhastarefas-api.herokuapp.com/tarefas';
 
 
-const TarefasList = () => {
+const TarefasList = (props) => {
   const classes = useStyles();
-  const [tarefas, setTarefas] = useState([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [mensagem, setMensagem] = useState('');
 
-  const salvar = tarefa => {
-    axios
-      .post(API_URL, tarefa, {
-        headers: { 'x-tenant-id': localStorage.getItem('email_usuario_logado') }
-      })
-      .then(response => {
-        const novaTarefa = response.data;
-        setTarefas([...tarefas, novaTarefa]);
-        setMensagem('Item adicionado com sucesso');
-        setOpenDialog(true);
-      })
-      .catch(erro => {
-        setMensagem('Ocorreu um erro');
-        setOpenDialog(true);
-      });
-  };
-
-  const listarTarefas = () => {
-    axios
-      .get(API_URL, {
-        headers: { 'x-tenant-id': localStorage.getItem('email_usuario_logado') }
-      })
-      .then(response => {
-        const listaDeTarefas = response.data;
-        setTarefas(listaDeTarefas);
-      })
-      .catch(erro => {
-        setMensagem('Ocorreu erro', erro);
-        setOpenDialog(true);
-      });
-  };
-
-  const alterarStatus = id => {
-    axios
-      .patch(`${API_URL}/${id}`, null, {
-        headers: { 'x-tenant-id': localStorage.getItem('email_usuario_logado') }
-      })
-      .then(response => {
-        const lista = [...tarefas];
-        lista.forEach(tarefa => {
-          if (tarefa.id === id) {
-            tarefa.done = true;
-          }
-        });
-        setTarefas(lista);
-        setMensagem('Item atualizado com sucesso');
-        setOpenDialog(true);
-      })
-      .catch(erro => {
-        setMensagem('Ocorreu erro', erro);
-        setOpenDialog(true);
-      });
-  };
-
-  const deletar = id => {
-    axios
-      .delete(`${API_URL}/${id}`, {
-        headers: { 'x-tenant-id': localStorage.getItem('email_usuario_logado') }
-      })
-      .then(response => {
-        const lista = tarefas.filter(tarefa => tarefa.id !== id);
-        setTarefas(lista);
-        setMensagem('Item removido com sucesso');
-        setOpenDialog(true);
-      })
-      .catch(erro => {
-        setMensagem('Ocorreu erro', erro);
-        setOpenDialog(true);
-      });
-  };
 
   useEffect(() => {
-    listarTarefas();
+   props.listar();
   }, []);
-
+ 
   return (
+    
     <div className={classes.root}>
-      <TarefasToolbar salvar={salvar} />
+      <TarefasToolbar salvar={props.salvar} />
       <div className={classes.content}>
         <TarefasTable
-          alterarStatus={alterarStatus}
-          deleteAction={deletar}
-          tarefas={tarefas}
+          alterarStatus={props.alterarStatus}
+          deleteAction={props.deletar}
+          tarefas={props.tarefas}
         />
       </div>
       <Dialog
-        onClose={e => setOpenDialog(false)}
-        open={openDialog}
+        onClose={props.esconderMensagem}
+        open={props.openDialog}
       >
         <DialogTitle>Atenção </DialogTitle>
-        <DialogContent>{mensagem}</DialogContent>
+        <DialogContent>{props.mensagem}</DialogContent>
         <DialogActions>
-          <Button onClick={e => setOpenDialog(false)}>Fechar</Button>
+          <Button onClick={props.esconderMensagem}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </div>
   );
 };
 
-export default TarefasList;
+const mapStateToProps = (state) => {
+  console.log('MapStateToProps',state)
+  return { 
+    tarefas: state.tarefas.tarefas,
+    mensagem: state.mensagens.mensagem,
+    openDialog: state.mensagens.mostrarMensagem
+  }
+}
+
+const mapDispatchToProps = dispatch => 
+  bindActionCreators({listar, salvar, deletar, alterarStatus, esconderMensagem},dispatch)
+
+export default connect(mapStateToProps,mapDispatchToProps)(TarefasList);
